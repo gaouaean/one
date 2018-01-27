@@ -2,10 +2,11 @@
 	<div ref='banner' class="swiper-container banner">
     <div class="swiper-wrapper">
         <ul class="swiper-slide list"  v-for='data in bannerList'>
-        	<li class='item' v-for='(item,index) in data' :key='index' >
+        	<router-link class='item' v-for='(item,index) in data' :key='index' 
+        		:to='"/home/sellerlist/"+item.name+"/"+index'>
 				<img :src='item.img' />
 				<p>{{item.name}}</p>
-			</li>
+			</router-link>
         </ul>
     </div>
     <!-- 如果需要分页器 -->
@@ -20,18 +21,23 @@
 
 <script>
 	import {getBannerData} from '../../../server/HomeService'
+	import Vuex from 'vuex'
 	export default {
-		
 		name:'home-banner',
 		data(){
 			return {
 				bannerList:[],
-			
 			}
+		},
+		computed:{
+			...Vuex.mapState({
+				lon:state=>state.location.lon,
+				lat:state=>state.location.lat
+			})
 		},
 		methods:{
 			initData(){
-				getBannerData('22.625871', '113.83794', [
+				getBannerData(this.lat, this.lon, [
                 'main_template',
                 'favourable_template',
                 'svip_template'
@@ -54,7 +60,16 @@
 				},
 			});
 			//请求数据
-			this.initData();
+			if(this.lon && this.lat){
+				this.initData();
+			}
+			//监听纬度变化
+			this.$watch('lat',()=>{
+				if(this.lon && this.lat){
+					//发送当前地址请求
+					this.initData();
+				}
+			})
 		}
 	}
 </script>

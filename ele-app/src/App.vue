@@ -12,6 +12,9 @@
 export default {
   components:{
   	[Tabs.name]:Tabs
+  },
+  created(){
+  	this.$store.dispatch('location/initLocation');
   }
 }
 </script>
@@ -22,6 +25,7 @@ export default {
   font-size:0.16rem;
 	width:100%;
 	height:100%;
+	background:#f1f1f1;
 	touch-action:none;
 }
 .swiper-pagination-bullet{

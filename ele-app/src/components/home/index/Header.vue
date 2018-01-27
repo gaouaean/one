@@ -1,13 +1,63 @@
 <template>
 	<header class='header'>
-		<p>深圳市福田区</p>
-		<div class='box'>搜索商家、商品名称</div>
+		<p @click='addressAction()'>{{address}}</p>
+		<router-link  to='/home/search' >
+			<div class='box'>搜索商家、商品名称</div>	
+		</router-link>
 	</header>
 </template>
 
 <script>
+	import Vuex from 'vuex'
+	import {getLocation} from '../../../server/HomeService'
 	export default{
 		name:'home-header',
+		data(){
+			return{
+				address:''
+			}
+		},
+		computed:{
+			...Vuex.mapState({
+				lon:state=>state.location.lon,
+				lat:state=>state.location.lat,
+			})
+		},
+		methods:{
+			requestData(){
+				//发送当前地址请求
+				getLocation(this.lat,this.lon)
+				.then(result=>{
+					this.address = result;
+					this.$store.dispatch('location/modifyAddressAction',{
+						address:this.address
+					})
+				})
+			},
+			addressAction(){
+				this.$router.push('/home/address');
+			},
+//			foodAction(){
+//				this.$router.push('/home/search')
+//			}
+		},
+		mounted(){
+			//初始化请求
+			if(this.lat && this.lon){
+				this.requestData();
+			}
+			//监听纬度的变化
+//			this.$watch('lat',()=>{
+//				if(this.lat && this.lon){
+//					//发送当前地址请求
+//					this.requestData();
+//				}
+//			})
+			//取得变化的地址
+			this.$event.$on('address',result=>{
+				this.address = result;
+			})
+		}
 	}
 </script>
 
@@ -27,7 +77,7 @@
 		bottom:-1px;
 		left:0px;
 		border-bottom:1px solid #999;
-		transfrom:scaleY(0.5);
+		transform:scaleY(0.5);
 		z-index:1;
 	}
 	.box{
@@ -42,5 +92,8 @@
 	}
 	p{
 		padding:0.15rem 0 0.05rem 0.16rem;
+		height:.5rem;
+		color:#fff;
+		box-sizing:border-box;
 	}
 </style>

@@ -1,10 +1,25 @@
 <template>
-	<div class='list'>
-		<div class='showlist-title'>推荐商家</div>
+	<sub-page ref='subpage' pageId='sellerList'>
+		<app-header :title='title' @goBack='goBackAction'></app-header>
+		<ul class='nav one-bottom-px'>
+			<li @click='searchAction'>
+				综合排序
+				<p v-show='isSearch'>
+					<span class='one-top-px'>综合排序</span>
+					<span>销量最高</span>
+					<span>起送价最低</span>
+					<span>配送最快</span>
+				</p>
+			</li>
+			<li>距离最近</li>
+			<li>会员领红包</li>
+			<li>筛选</li>
+		</ul>
+		<div class='wrapper' ref='wrap'>
 		<ul class='showlists'>
 				<div class='showlist' v-for='(item,index) in dataList'  :key='index' >
 					<!--:to='"/home/detail/"+item+"/"+index'-->
-					<router-link class='logo' :to='"/home/detail/"+item+"/"+index'>
+					<router-link class='logo' :to='"/home/detail/"+item.id+"/"+index'>
 						<img :src='item.img' />
 					</router-link>
 					<div class='info'>
@@ -47,119 +62,218 @@
 							<span v-show='item.activities.length>2' class='btn' @click='showAction(index)'>{{item.activities.length}}个活动</span>
 						</div>
 					</div>
-					<!--111-->
 				</div>
+				<!--显示上拉加载更多-->
+			<div  class='load-more' :class='{down:isDown==1}'>
+				<img :src='imgPath' />
+				<span>{{downInfo}}...</span>
+			</div>
+			<div class='opacity' v-show='isSearch'></div>
 		</ul>
-	</div>
+		
+		</div>
+	</sub-page>
 </template>
 
 <script>
 	import Vuex from 'vuex'
-	import {getListData} from '../../../server/HomeService'
-	import CharterIcon from '../../../common/CharterIcon'
-	
-	
+	import CharterIcon from '../../common/CharterIcon'
+	import AppHeader from '../../common/AppHeader.vue'
+	import SubPage from '../../common/SubPage.vue'
+	import {getBannerList} from '../../server/HomeService'
+	const NO_TRIGGER = 0;
+	const TRIGGER = 1;
+	const ACTIVE =2;
 	export default {
-		name:'home-list',
 		data(){
-			return {
-				dataList:[],//列表请求的数据源
-				limit:12,//一次请求的数据长度
+			return{
+				title:this.$route.params.item,
+				dataList:[],
+				limit:8,
+				isDown:NO_TRIGGER,//0没有触发加载更多  1触发加载更多 2正在加载更多
+				downInfo:'上拉加载更多',
+				imgPath:'/static/img/arrow.png',
+				isSearch:false
+			}
+		},
+		computed:{
+			...Vuex.mapState({
+				lat:state=>state.location.lat,
+				lon:state=>state.location.lon
+			}),
+			offset(){
+				return this.dataList.length;
 			}
 		},
 		components:{
+			[SubPage.name]:SubPage,
+			[AppHeader.name]:AppHeader,
 			[CharterIcon.name]:CharterIcon,
-			
-		},
-		computed:{
-			offset(){
-				//告诉后台从哪里开始请求下一条数据
-				return this.dataList.length
-			},
-			...Vuex.mapState({
-				lon:state=>state.location.lon,
-				lat:state=>state.location.lat
-			})
 		},
 		methods:{
+			goBackAction(){
+				this.$router.push('/home');
+			},
 			requestData(callback){
-				getListData(this.lat,this.lon,this.offset,this.limit)
-				.then((result)=>{
-					//第一次进入需要加载第一页数据
-	                //触发滚动视图的加载更多，加载下一页数据
-//	                console.log(result);
-	                this.dataList = this.dataList.concat(result);
-					this.$nextTick(()=>{
-						//请求完成,执行停止加载更多的动画
-						if(callback){
-							callback();
-						}
-					})
+				getBannerList(this.lat,this.lon,this.title,this.offset,this.limit)
+				.then(result=>{
+					this.dataList = this.dataList.concat(result);
+					if(callback){
+						callback();
+					}
 				})
+			},
+			//页面刷新滚动
+			pageRefresh(){
+				console.log('要滚动了')
+				this.scroll.refresh();
 			},
 			//列表展开查看活动的事件
 			showAction(index){
 				this.dataList[index].isShow = !this.dataList[index].isShow;
-				//更新滚动视图
-				this.$nextTick(()=>{
-					//告诉home组件更新滚动
-					this.$emit('list-change');
-				})
+			},
+			//结束滚动
+			endLoadMoreAni(){
+				this.isDown=NO_TRIGGER,
+				this.downInfo='上拉加载更多',
+				this.imgPath='/static/img/arrow.png'
+			},
+			//挑选
+			searchAction(){
+				this.isSearch = !this.isSearch
 			}
-		},
-		created(){
-//			this.$event.$on('modify-index',(obj)=>{
-//				console.log(obj)
-//				console.log(obj.item)
-//				this.dataList.splice(obj.index,1,obj.item);
-//			})
+			
 		},
 		mounted(){
+			//初始化请求
 			if(this.lat && this.lon){
 				this.requestData();
 			}
-			//监听纬度的变化
+			//监听纬度变化
 			this.$watch('lat',()=>{
 				if(this.lat && this.lon){
-					//发送当前地址请求
-					this.dataList=[];
-					this.requestData();
+					//发送地址请求
+					this.requestData(()=>{
+						this.searchAction();
+					});
 				}
 			})
+			//添加滚动
+			this.scroll = new IScroll(this.$refs.wrap,{
+				bounce:true,
+				probeType:3,
+			})
+			//让页面可以滚动
+			this.scroll.on('scrollStart',this.pageRefresh);
+			
+			//上拉加载更多,加载距离为40
+				this.scroll.on('scroll',()=>{
+				if(this.isDown != ACTIVE){
+					let maxScrollY = this.scroll.maxScrollY;
+					let y = this.scroll.y;
+					//显示上啦加载更多 maxScrollY < y <maxScrollY + 40
+//					console.log(maxScrollY,y)
+					if(y>maxScrollY){
+						this.downInfo = '上拉可以加载更多';
+						this.isDown = NO_TRIGGER;
+					}
+					//显示:释放立即加载更多 y<maxScrillY
+					else if(y<maxScrollY){
+						this.downInfo = '释放立即加载更多';
+						this.isDown = TRIGGER;
+					}
+				}
+				});
+				
+				this.scroll.on('scrollEnd',()=>{
+					if(this.isDown != ACTIVE){
+						//srcoll没有正在加载更多是,才进行判断
+						let maxScrollY = this.scroll.maxScrollY;
+						let y = this.scroll.y;
+						//判断是否达到加载更多的条件
+						//maxScrollY <  y <maxScrollY+40没有达到加载更多的条件
+						if(y>maxScrollY && y<maxScrollY+40){
+							this.scroll.scrollTo(0,maxScrollY+40,200);
+						}
+						else if(y==maxScrollY){
+							this.imgPath='/static/img/ajax-loader.gif';
+							this.downInfo='正在加载更多';
+							this.isDown=ACTIVE;
+							this.requestData(()=>{
+								this.endLoadMoreAni();
+							});
+						}
+					}
+				})
 		}
 	}
 </script>
 
 <style scoped>
-	.showlist-title{
-		height:0.32rem;
-		line-height:0.32rem;
-		font-size:.14rem;
-		color:#000;
+	.opacity{
+		position:absolute;
+		top:0;
+		left:0;
+		width:100%;
+		height:100%;
+		background:#333;
+		opacity:.6;
+		z-index:10;
+	}
+	.nav{
+		width:100%;
+		height:.36rem;
+		line-height:.36rem;
+		/*display:flex;
+		justify-content: space-around;*/
+		font-size:.12rem;
+		color:#666;
+		background:#fff;
+	}
+	.nav li {
+		width:25%;
+		float:left;
 		text-align:center;
-		display:flex;
-		align-items:center;
-		justify-content: center;
-		background:#fff; 
+		
 	}
-	.showlist-title:before{
-		content:'';
-		display:block;
-		height:.01rem;
-		width:.15rem;
-		background:#999;
-		margin-right:.1rem;
+	.nav li p{
+		
 	}
-	.showlist-title:after{
-		content:'';
+	.nav li p span{
 		display:block;
-		height:.01rem;
-		width:.15rem;
-		background:#999;
-		margin-left:.1rem;
+		width:3.2rem;
+		height:.36rem;
+		text-align:left;
+		text-indent:1.5em;
+		background:#fff;
+		z-index:20;
+	}
+	.nav li:nth-of-type(1){
+		position:relative;
+		z-index:11;
+	}
+	.nav li:nth-of-type(1):after{
+		content:'';
+		position:absolute;
+		right:.03rem;
+		top:0.18rem;
+		display:inline-block;
+		width:0;
+		height:0;
+		border:0.04rem solid #999;
+		border-right:0.04rem solid transparent;
+		border-left:0.04rem solid transparent;
+		border-bottom:0.04rem solid transparent
+	}
+	.wrapper{
+		position:absolute;
+		width:100%;
+		top:.8rem;
+		left:0;
+		bottom:0;
+		overflow:hidden;
 	}
 	.showlists .showlist{
-		
 		padding:.08rem;
 		width:100%;
 		display:flex;
@@ -251,9 +365,6 @@
 		line-height:.2rem;
 		font-size:.12rem;
 		color:#666;
-	}
-	.showlists .showlist .info .p.p1{
-		
 	}
 	.showlists .showlist .info .p1 .s2{
 		font-size:.16rem;

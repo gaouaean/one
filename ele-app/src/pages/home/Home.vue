@@ -26,6 +26,7 @@
 </template>
 
 <script>
+	
 	import Page from '../../common/Page.vue'
 	import Banner from '../../components/home/index/Banner.vue'
 	import Search from '../../components/home/index/Search.vue'
@@ -81,7 +82,8 @@
 	    box-sizing: border-box;
 	    padding:0 .05rem 0 .08rem;
 	    border-radius:0.05rem;
-	    margin-bottom:.12rem;
+	    padding-bottom:.12rem;
+	    background:#fff;
 	}
 	.newuser-info img{
 	    width: 100%;

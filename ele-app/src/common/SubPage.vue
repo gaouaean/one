@@ -1,5 +1,5 @@
 <template>
-	<div class=' page subpage' :id='pageId'>
+	<div class=' page subpage' :id='pageId' >
 		<slot></slot>
 	</div>
 </template>
@@ -9,7 +9,9 @@
 		props:{
 			pageId:String,
 		},
-		name:'sub-page'
+		name:'sub-page',
+	
+	
 	}
 </script>
 
@@ -20,7 +22,7 @@
 		top:0;
 		left:0;
 		bottom:0;
-		background:#fff;
+		background:#F7F7F7;;
 		z-index:5;
 	}
 </style>

@@ -31,8 +31,8 @@
 		position:absolute;
 		bottom:0;
 		left:0;
-		height:49px;
-		line-height:18px;
+		height:.49rem;
+		line-height:.18rem;
 		display:flex;
 		width:100%;
 	}
@@ -42,7 +42,7 @@
 		color:#8e8e93;
 		background:#fff;
 		display:flex;
-		font-size:15px;
+		font-size:.15rem;
 		flex-direction: column;
 		justify-content: center;
 		align-items:center;
